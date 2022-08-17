@@ -1,7 +1,6 @@
 import requests
 import csv
-
-url = "https://api-v2.soundcloud.com/users/234468714/followers"
+from bs4 import BeautifulSoup
 
 payload = ""
 headers = {
@@ -21,7 +20,7 @@ headers = {
 }
 
 # gets next 200 followers (200 is seemingly the highest allowed by soundcloud's api)
-def get_followers_chunk(offset=0):
+def get_followers_chunk(offset, url):
     querystring = {"offset":offset,"limit":"200","client_id":"RfoqFLXghO6UuFNArI1Ksd17qWClDBFt","app_version":"1660231961","app_locale":"en"}
     response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
     
@@ -29,32 +28,80 @@ def get_followers_chunk(offset=0):
     
 # writes csv file with all followers' info
 def write_csv(all_followers):
-    follower_info = ['avatar_url', 'city', 'comments_count', 'country_code', 'created_at', 'creator_subscriptions',
-                     'creator_subscription', 'description', 'followers_count', 'followings_count', 'first_name',
-                     'full_name', 'groups_count', 'id', 'kind', 'last_modified', 'last_name', 'likes_count',
-                     'playlist_likes_count', 'permalink', 'permalink_url', 'playlist_count', 'reposts_count',
-                     'track_count', 'uri', 'urn', 'username', 'verified', 'visuals', 'badges', 'station_urn',
-                     'station_permalink']
+    follower_info = ['followers_count', 'id', 'permalink_url', 'username']
     
     with open('followers.csv', 'w', encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames = follower_info)
         writer.writeheader()
         writer.writerows(all_followers)
     
+# gets rid of unnecessary info in the dictionaries
+def consolidate_dicts(all_followers):
+    for i in range(len(all_followers)):
+        all_followers[i].pop('created_at')
+        all_followers[i].pop('city')
+        all_followers[i].pop('last_name')
+        all_followers[i].pop('avatar_url')
+        all_followers[i].pop('comments_count')
+        all_followers[i].pop('country_code')
+        all_followers[i].pop('creator_subscriptions')
+        all_followers[i].pop('creator_subscription')
+        all_followers[i].pop('description')
+        all_followers[i].pop('followings_count')
+        all_followers[i].pop('first_name')
+        all_followers[i].pop('full_name')
+        all_followers[i].pop('groups_count')
+        all_followers[i].pop('kind')
+        all_followers[i].pop('last_modified')
+        all_followers[i].pop('likes_count')
+        all_followers[i].pop('playlist_likes_count')
+        all_followers[i].pop('permalink')
+        all_followers[i].pop('playlist_count')
+        all_followers[i].pop('reposts_count')
+        all_followers[i].pop('track_count')
+        all_followers[i].pop('uri')
+        all_followers[i].pop('urn')
+        all_followers[i].pop('verified')
+        all_followers[i].pop('visuals')
+        all_followers[i].pop('badges')
+        all_followers[i].pop('station_urn')
+        all_followers[i].pop('station_permalink')
+
+
+def get_api_url(account_url):
+    page_source = requests.get(account_url, 'html.parser').text
+    print('page_source: ' + page_source)
+    soup = BeautifulSoup(page_source, features="lxml")
+    
+    
+    user_id = soup.find_all('div', {'class':'userInfoBar__buttons'}) #.find('a', {'class':'sc-button-startstation sc-button-secondary sc-button sc-button-medium sc-button-responsive'})['href']
+    
+    for o in user_id:
+        
+        print('USER_ID ' + o.text)
+    
+    url = f"https://api-v2.soundcloud.com/users/{user_id}/followers"
+
 
 def main():
     all_followers = []
     offset = 0
         
+    account_url = input('Give a SoundCloud account URL: ')
+    api_url = get_api_url(account_url)
+    
     while True:
         print('offset: ' + str(offset))
-        followers_chunk = get_followers_chunk(offset)
+        followers_chunk = get_followers_chunk(offset, api_url)
         all_followers += followers_chunk['collection']
         try:
             offset = followers_chunk['next_href'].split('?')[1].split('=')[1].split('&')[0]
         except AttributeError: # an AttributeError here would imply that no offset was found, meaning we've found every follower
             break
     
+    
+    consolidate_dicts(all_followers)
+    print(all_followers[0])
     write_csv(all_followers)
     
 
