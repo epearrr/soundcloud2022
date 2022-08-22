@@ -70,17 +70,11 @@ def consolidate_dicts(all_followers):
 
 def get_api_url(account_url):
     page_source = requests.get(account_url, 'html.parser').text
-    print('page_source: ' + page_source)
-    soup = BeautifulSoup(page_source, features="lxml")
+    soup = BeautifulSoup(page_source)
     
+    user_id = soup.find('meta', {'property':'twitter:app:url:googleplay'})['content'].split(':')[2] #.find('a', {'class':'sc-button-startstation sc-button-secondary sc-button sc-button-medium sc-button-responsive'})['href']
     
-    user_id = soup.find_all('div', {'class':'userInfoBar__buttons'}) #.find('a', {'class':'sc-button-startstation sc-button-secondary sc-button sc-button-medium sc-button-responsive'})['href']
-    
-    for o in user_id:
-        
-        print('USER_ID ' + o.text)
-    
-    url = f"https://api-v2.soundcloud.com/users/{user_id}/followers"
+    return f"https://api-v2.soundcloud.com/users/{user_id}/followers"
 
 
 def main():
